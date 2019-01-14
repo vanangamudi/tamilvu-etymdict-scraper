@@ -133,10 +133,10 @@ class wait_for_the_attribute_value(object):
             return False
 
         
-def gather_word_meanings(args, wd, words=[]):
+def gather_word_meanings(args, words=[]):
     if len(words) < 1:
-        s = int(args.offset)
-        e = s + int(args.count)
+        s = args.offset
+        e = s + args.count
         words = open(WORDS_FILEPATH).read().split('\n')  [s:e]
         
         log.info('loaded {} words from {}'.format(len(words), WORDS_FILEPATH))
@@ -149,50 +149,53 @@ def gather_word_meanings(args, wd, words=[]):
     word_meanings_dump_file = open('{}_{}_{}'.format(WORD_MEANINGS_DUMP_FILEPATH,
                                                      s, e)
                                    , 'w')
+
+    num_batches =  len(words)// args.batch_size
+    for i in range(num_batches):
+        batch = words[i * args.batch_size : (i+1) * args.batch_size]
         
-    for i, input_text in enumerate(tqdm(words)):
-        try:
-            
-            #print('sending ', input_text)
-            input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
-            input_textbox.clear()
-            input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
-            input_textbox.send_keys(input_text)
-            
-            submit_btn = wd.find_element_by_id(SUBMIT_BTN_ID)
-            submit_btn.click()
-            WebDriverWait(wd, 10).until(
-                wait_for_the_attribute_value((By.TAG_NAME, 'span'),
-                                             'id',
-                                             'lblResults'))
-            
-            html_page = wd.page_source
-            soup = BeautifulSoup(html_page, 'lxml')
-            span = soup.find('span', id='lblResults')
+        print('refreshing driver...')
+        wd = webdriver.Firefox()
+        wd.get(URL)
+        
+        for j, input_text in enumerate(tqdm(batch, desc='{}/{}'.format(i, num_batches))):
+            try:
 
-            word_meanings_dump_file.write(
-                '||'.join( [input_text, span.prettify().replace('\n', '')] ) + '\n'
-            )
-            
-            """
-            #print(span.prettify())
-            
-            for i in [BeautifulSoup(i, 'lxml') for i in str(span).split('<br/>') if i]:
-                print(i.prettify())
-                
-            print('===')
-            """
-        except:
-            log.exception('ERROR: {}'.format(input_text))
+                #print('sending ', input_text)
+                input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
+                input_textbox.clear()
+                input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
+                input_textbox.send_keys(input_text)
 
-        if i and i % 100 == 0:
-            print('refreshing driver...')
-            wd.quit()
-            wd = webdriver.Firefox()
-            wd.get(URL)
+                submit_btn = wd.find_element_by_id(SUBMIT_BTN_ID)
+                submit_btn.click()
+                WebDriverWait(wd, 10).until(
+                    wait_for_the_attribute_value((By.TAG_NAME, 'span'),
+                                                 'id',
+                                                 'lblResults'))
+
+                html_page = wd.page_source
+                soup = BeautifulSoup(html_page, 'lxml')
+                span = soup.find('span', id='lblResults')
+
+                word_meanings_dump_file.write(
+                    '||'.join( [input_text, span.prettify().replace('\n', '')] ) + '\n'
+                )
+
+                """
+                #print(span.prettify())
+
+                for i in [BeautifulSoup(i, 'lxml') for i in str(span).split('<br/>') if i]:
+                    print(i.prettify())
+
+                print('===')
+                """
+            except:
+                log.exception('ERROR: {}'.format(input_text))
 
 
-    return wd
+        wd.quit()
+        
 
 if __name__ == '__main__':
 
@@ -210,24 +213,24 @@ if __name__ == '__main__':
 
     word_meanings_parser = subparsers.add_parser('meanings', help='starts word_meaning')
     word_meanings_parser.add_argument('--word-meanings', default='word_meanings', dest='task')
-    word_meanings_parser.add_argument('--count', default=10000, dest='count')
-    word_meanings_parser.add_argument('--offset', default=0, dest='offset')
+    word_meanings_parser.add_argument('--count', default=10000000, dest='count', type=int)
+    word_meanings_parser.add_argument('--offset', default=0, dest='offset', type=int)
+    word_meanings_parser.add_argument('--batch-size', default=50, dest='batch_size', type=int)
 
     args = parser.parse_args()
     print(args)
     if not args.task == 'donothing':
-        # Start the WebDriver and load the page
-        wd = webdriver.Firefox()
-        wd.get(URL)
+
         
         if args.task == 'words':
+            # Start the WebDriver and load the page
+            wd = webdriver.Firefox()
+            wd.get(URL)
             gather_words(args, wd)
+            wd.quit()
             
         if args.task == 'word_meanings':
-            wd =  gather_word_meanings(args, wd) #, ['கரந்தை'])
-
-
-        wd.quit()
+            gather_word_meanings(args) #, ['கரந்தை'])
         
     end = time.time()
     print('elasped: {}'.format(end-start))
