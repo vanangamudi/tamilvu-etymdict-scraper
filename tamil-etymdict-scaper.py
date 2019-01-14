@@ -31,19 +31,24 @@ def mkdir(path):
 
 
 URL = 'http://stream1.tamilvu.in/etytamildict/TamilDemo.aspx'
-WORDS_FILEPATH = 'etymdict_lexicon.csv'
+
+WORDS_FILEPATH   = 'etymdict_lexicon.csv'
 LEXICON_FILEPATH = 'length_words_first.cleaned.txt'
+LETTERS_FILEPATH = 'letters_from_tace16_data.csv'
+
+WORD_MEANINGS_DUMP_FILEPATH = 'word_meanings.dump.csv'
+
 # tags, classes, ids for content extraction
 INPUT_TEXTBOX_ID = 'txtNames1'
 
-WORDS_POPUP_LIST_ID = 'ui-id-1'
-WORDS_POPUP_LIST_CLASS = 'ui-autocomplete' # + ' ui-front ui-menu ui-widget ui-widget-content'
+WORDS_POPUP_LIST_ID          = 'ui-id-1'
+WORDS_POPUP_LIST_CLASS       = 'ui-autocomplete' # + ' ui-front ui-menu ui-widget ui-widget-content'
 WORDS_POPUP_LIST_ITEMS_CLASS = 'ui-menu-item'
 
 INITIAL_KEYWORD = 'காக்கைப்பித்து'
-SUBMIT_BTN_ID = 'btnSearch'
+SUBMIT_BTN_ID   = 'btnSearch'
 
-def gather_words(wd):
+def gather_words(args, wd):
     WORDS = Counter()
     input_text = INITIAL_KEYWORD
     
@@ -128,16 +133,27 @@ class wait_for_the_attribute_value(object):
             return False
 
         
-def gather_word_meanings(wd, words=[]):
+def gather_word_meanings(args, wd, words=[]):
     if len(words) < 1:
-        words = open(WORDS_FILEPATH).read().split('\n')[:10]
-        log.info('loaded {} words from {}'.format(len(words), WORDS_FILEPATH))
+        s = int(args.offset)
+        e = s + int(args.count)
+        words = open(WORDS_FILEPATH).read().split('\n')  [s:e]
         
-    for i in tqdm(words):
-        input_text = i
+        log.info('loaded {} words from {}'.format(len(words), WORDS_FILEPATH))
+
+        """
+        letters = open(LETTERS_FILEPATH).read().split('\n')
+        log.info('loaded {} letter from {}'.format(len(letters), LETTERS_FILEPATH))
+        """
+        
+    word_meanings_dump_file = open('{}_{}_{}'.format(WORD_MEANINGS_DUMP_FILEPATH,
+                                                     s, e)
+                                   , 'w')
+        
+    for i, input_text in enumerate(tqdm(words)):
         try:
             
-            print('sending ', input_text)
+            #print('sending ', input_text)
             input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
             input_textbox.clear()
             input_textbox = wd.find_element_by_id(INPUT_TEXTBOX_ID)
@@ -145,8 +161,6 @@ def gather_word_meanings(wd, words=[]):
             
             submit_btn = wd.find_element_by_id(SUBMIT_BTN_ID)
             submit_btn.click()
-            wd.implicitly_wait(10)
-            
             WebDriverWait(wd, 10).until(
                 wait_for_the_attribute_value((By.TAG_NAME, 'span'),
                                              'id',
@@ -154,17 +168,31 @@ def gather_word_meanings(wd, words=[]):
             
             html_page = wd.page_source
             soup = BeautifulSoup(html_page, 'lxml')
-            span =soup.find('span', id='lblResults')
-            #print(span.prettify())
-            for i in span:
-                print(i)
-                print('===')
+            span = soup.find('span', id='lblResults')
+
+            word_meanings_dump_file.write(
+                '||'.join( [input_text, span.prettify().replace('\n', '')] ) + '\n'
+            )
             
+            """
+            #print(span.prettify())
+            
+            for i in [BeautifulSoup(i, 'lxml') for i in str(span).split('<br/>') if i]:
+                print(i.prettify())
+                
+            print('===')
+            """
         except:
             log.exception('ERROR: {}'.format(input_text))
-            
-    wd.quit()
 
+        if i and i % 100 == 0:
+            print('refreshing driver...')
+            wd.quit()
+            wd = webdriver.Firefox()
+            wd.get(URL)
+
+
+    return wd
 
 if __name__ == '__main__':
 
@@ -182,6 +210,8 @@ if __name__ == '__main__':
 
     word_meanings_parser = subparsers.add_parser('meanings', help='starts word_meaning')
     word_meanings_parser.add_argument('--word-meanings', default='word_meanings', dest='task')
+    word_meanings_parser.add_argument('--count', default=10000, dest='count')
+    word_meanings_parser.add_argument('--offset', default=0, dest='offset')
 
     args = parser.parse_args()
     print(args)
@@ -191,12 +221,13 @@ if __name__ == '__main__':
         wd.get(URL)
         
         if args.task == 'words':
-            gather_words(wd)
+            gather_words(args, wd)
             
         if args.task == 'word_meanings':
-            gather_word_meanings(wd)
+            wd =  gather_word_meanings(args, wd) #, ['கரந்தை'])
 
 
         wd.quit()
+        
     end = time.time()
     print('elasped: {}'.format(end-start))
