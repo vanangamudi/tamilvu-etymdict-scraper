@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium import webdriver
 
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import StaleElementReferenceException
 
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -192,8 +193,10 @@ if __name__ == '__main__':
         if args.task == 'words':
             gather_words(wd)
             
-        if args.task == 'meanings':
-            gather_word_meanings(wd, [])
+        if args.task == 'word_meanings':
+            gather_word_meanings(wd)
 
+
+        wd.quit()
     end = time.time()
     print('elasped: {}'.format(end-start))
