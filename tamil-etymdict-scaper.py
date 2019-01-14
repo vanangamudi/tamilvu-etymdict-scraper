@@ -1,3 +1,6 @@
+
+import time
+import argparse
 from collections import Counter
 
 from selenium.webdriver.support.ui import WebDriverWait
@@ -126,40 +129,35 @@ def gather_word_meanings(wd, words):
     wd.quit()
 
 
-
-"""
-submit_btn = wd.find_element_by_id(submit_btn_id)
-submit_btn.click()
-wd.implicitly_wait(10)
-"""
-                            
-
-
-
-import argparse
-
 if __name__ == '__main__':
-    """
+
     start = time.time()
-    parser = argparse.ArgumentParser(description='MACNet variant 2')
-    parser.add_argument('-p','--hpconfig',
-                        help='path to the hyperparameters config file',
-                        default='hpconfig.py', dest='hpconfig')
-    
+
+    parser = argparse.ArgumentParser(description='Scrape words and word meanings from tamilvu.org')
     parser.add_argument('-d', '--prefix-dir',
                         help='path to the results',
                         default='run00', dest='prefix_dir')
     
-    parser.add_argument('--log-filters',
-                        help='log filters',
-                        dest='log_filter')
-
+    parser.add_argument('--do-nothing', default='donothing', dest='task')
     subparsers = parser.add_subparsers(help='commands')
+    words_parser = subparsers.add_parser('words', help='starts wordsing')
+    words_parser.add_argument('--words', default='words', dest='task')
 
-    donothing_parser = subparsers.add_parser('donothing', help='does nothing')
-    donothing_parser.add_argument('--donothing', default='donothing', dest='task')
-    
-    train_parser = subparsers.add_parser('train', help='starts training')
-    train_parser.add_argument('--train', default='train', dest='task')
-    """
-    gather_words()
+    word_meanings_parser = subparsers.add_parser('meanings', help='starts word_meaning')
+    word_meanings_parser.add_argument('--word-meanings', default='word_meanings', dest='task')
+
+    args = parser.parse_args()
+    print(args)
+    if not args.task == 'donothing':
+        # Start the WebDriver and load the page
+        wd = webdriver.Firefox()
+        wd.get(URL)
+        
+        if args.task == 'words':
+            gather_words(wd)
+            
+        if args.task == 'meanings':
+            gather_word_meanings(wd, [])
+
+    end = time.time()
+    print('elasped: {}'.format(end-start))
