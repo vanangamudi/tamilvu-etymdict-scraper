@@ -29,25 +29,19 @@ def mkdir(path):
 URL = 'http://stream1.tamilvu.in/etytamildict/TamilDemo.aspx'
 
 
-def gather_words():
-    # Start the WebDriver and load the page
-    wd = webdriver.Firefox()
-    wd.get(URL)
+# tags, classes, ids for content extraction
+INPUT_TEXTBOX_ID = 'txtNames1'
 
+WORDS_POPUP_LIST_ID = 'ui-id-1'
+WORDS_POPUP_LIST_CLASS = 'ui-autocomplete' # + ' ui-front ui-menu ui-widget ui-widget-content'
+WORDS_POPUP_LIST_ITEMS_CLASS = 'ui-menu-item'
 
-    # tags, classes, ids for content extraction
-    input_textbox_id = 'txtNames1'
+INITIAL_KEYWORD = 'காக்கைப்பித்து'
+SUBMIT_BTN_ID = 'btnSearch'
 
-    words_popup_list_id = 'ui-id-1'
-    words_popup_list_class = 'ui-autocomplete' # + ' ui-front ui-menu ui-widget ui-widget-content'
-    words_popup_list_items_class = 'ui-menu-item'
-
-    initial_keyword = 'காக்கைப்பித்து'
-    submit_btn_id = 'btnSearch'
-
+def gather_words(wd):
     WORDS = Counter()
-    input_text = initial_keyword
-
+    input_text = INITIAL_KEYWORD
     
     lexicon = []
     with open('length_words_first.cleaned.txt', 'r') as f:
@@ -66,7 +60,7 @@ def gather_words():
                         continue
 
                     words_already_lookedup[input_text] = 1
-                    input_textbox = wd.find_element_by_id(input_textbox_id)
+                    input_textbox = wd.find_element_by_id( INPUT_TEXTBOX_ID)
                     input_textbox.clear()
                     print('sending ', input_text)
                     input_textbox.send_keys(input_text + ' ')
@@ -76,11 +70,11 @@ def gather_words():
 
                     # Wait for the dynamically loaded elements to show up
                     WebDriverWait(wd, 10).until(
-                        EC.visibility_of_element_located((By.CLASS_NAME, words_popup_list_class)))
+                        EC.visibility_of_element_located((By.CLASS_NAME, WORDS_POPUP_LIST_CLASS)))
 
                     html_page = wd.page_source
                     soup = BeautifulSoup(html_page, 'lxml')
-                    new_words = [i.text for i in soup.find_all(class_=words_popup_list_items_class)]
+                    new_words = [i.text for i in soup.find_all(class_=WORDS_POPUP_LIST_ITEMS_CLASS)]
                     WORDS.update(new_words)
 
                 print('extracted {} words'.format(len(WORDS)))          
@@ -100,52 +94,29 @@ def gather_words():
 
 
 
-def gather_word_meanings(words):
-    # Start the WebDriver and load the page
-    wd = webdriver.Firefox()
-    wd.get(URL)
-
-    # tags, classes, ids for content extraction
-    input_textbox_id = 'txtNames1'
-
-    words_popup_list_id = 'ui-id-1'
-    words_popup_list_class = 'ui-autocomplete' # + ' ui-front ui-menu ui-widget ui-widget-content'
-    words_popup_list_items_class = 'ui-menu-item'
-
-    initial_keyword = 'காக்கைப்பித்து'
-    submit_btn_id = 'btnSearch'
-
-    WORDS = Counter()
-    input_text = initial_keyword
-
-    
-    lexicon = []
-    with open('length_words_first.cleaned.txt', 'r') as f:
-        lines = [l.strip().split('|')[0] for l in f.readlines() if len(l) < 5 and len(l) > 2]
-        lexicon.extend(lines)
-
+def gather_word_meanings(wd, words):
     words_already_lookedup = {}
 
     for i in tqdm(words):
         input_text = i
         try:
             words_already_lookedup[input_text] = 1
-            input_textbox = wd.find_element_by_id(input_textbox_id)
+            input_textbox = wd.find_element_by_id( INPUT_TEXTBOX_ID)
             input_textbox.clear()
             print('sending ', input_text)
             input_textbox.send_keys(input_text)
             
-            submit_btn = wd.find_element_by_id(submit_btn_id)
+            submit_btn = wd.find_element_by_id(SUBMIT_BTN_ID)
             submit_btn.click()
             wd.implicitly_wait(10)
             
             # Wait for the dynamically loaded elements to show up
             WebDriverWait(wd, 10).until(
-                EC.visibility_of_element_located((By.CLASS_NAME, words_popup_list_class)))
+                EC.visibility_of_element_located((By.CLASS_NAME, WORDS_POPUP_LIST_CLASS)))
             
             html_page = wd.page_source
             soup = BeautifulSoup(html_page, 'lxml')
-            new_words = [i.text for i in soup.find_all(class_=words_popup_list_items_class)]
+            new_words = [i.text for i in soup.find_all(class_=WORDS_POPUP_LIST_ITEMS_CLASS)]
             WORDS.update(new_words)
             
             
