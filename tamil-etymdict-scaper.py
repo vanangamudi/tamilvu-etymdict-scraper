@@ -151,7 +151,7 @@ def gather_word_meanings(args, words=[]):
                                    , 'w')
 
     num_batches =  len(words)// args.batch_size
-    for i in range(num_batches):
+    for i in tqdm(range(num_batches)):
         batch = words[i * args.batch_size : (i+1) * args.batch_size]
         
         print('refreshing driver...')
