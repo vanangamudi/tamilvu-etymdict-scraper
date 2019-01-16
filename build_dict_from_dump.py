@@ -245,7 +245,7 @@ def build_records(args, word, span):
                 else:
                     s = current_tag.text
 
-                if s:
+                if s.strip():
                     unparsed_content = '//'.join([unparsed_content, s])
             
             
@@ -263,13 +263,17 @@ def build_records(args, word, span):
 def build_dict(args):
     word_meanings = [ i.split('||') for i in open(args.dump_filepath).readlines()]
     records = []
-    for i, (word, meanings) in enumerate(tqdm(word_meanings)):
-        soup = BeautifulSoup(meanings, 'lxml')
-        span = soup.find('span', id='lblResults')
-        try:    
+    for record in enumerate(tqdm(word_meanings)):
+        try:
+            i, (word, meanings) = record
+            log.info('processing record {} -- {}'.format(i, word))
+            soup = BeautifulSoup(meanings, 'lxml')
+            span = soup.find('span', id='lblResults')
+            
             records.extend(build_records(args, word,  span))
         except:
-            log.exception('ERROR: {}'.format(word))
+            log.exception('last processed record {} -- {}'.format(i, word))
+            
             
     return records
 
